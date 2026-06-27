@@ -15,7 +15,10 @@
     { id: "silver_vault_warden", name: "Silver Vault Warden", difficulty: "Elite", levelOffset: 2, rewardMult: 1.75, trait: "Balanced elite", hint: "Hybrid builds are safest.", mode: "comboRamp", bias: { speed: 1.07, damage: 1.14, growth: 1.12, gravity: 1.04 }, playerTrackMultiplier: 1.1, enemyTrackMultiplier: 0.94 },
     { id: "nightfall_arcanist", name: "Nightfall Arcanist", difficulty: "Elite", levelOffset: 2, rewardMult: 1.82, trait: "Late burst", hint: "End the race quickly or outscale it.", mode: "milestone", bias: { speed: 0.94, damage: 1.04, growth: 1.42, bounce: 1.08 }, playerTrackMultiplier: 1.12, enemyTrackMultiplier: 0.94 },
     { id: "granite_maul_knight", name: "Granite Maul Knight", difficulty: "Elite", levelOffset: 2, rewardMult: 1.88, trait: "Slow heavy hits", hint: "Speed rush beats this if your damage is adequate.", mode: "flat", bias: { speed: 0.82, damage: 1.58, growth: 0.95, gravity: 1.25, bounce: 0.95 }, playerTrackMultiplier: 1.08 },
-    { id: "skychain_evoker", name: "Skychain Evoker", difficulty: "Hard", levelOffset: 1, rewardMult: 1.42, trait: "Low gravity chains", hint: "Gravity gear and bounce control matter.", mode: "streak", bias: { speed: 1.0, damage: 0.94, growth: 1.28, gravity: 0.7, bounce: 1.24 }, playerTrackMultiplier: 1.03 }
+    { id: "skychain_evoker", name: "Skychain Evoker", difficulty: "Hard", levelOffset: 1, rewardMult: 1.42, trait: "Low gravity chains", hint: "Gravity gear and bounce control matter.", mode: "streak", bias: { speed: 1.0, damage: 0.94, growth: 1.28, gravity: 0.7, bounce: 1.24 }, playerTrackMultiplier: 1.03 },
+    { id: "obsidian_doorbreaker", name: "Obsidian Doorbreaker", difficulty: "Elite", levelOffset: 2, rewardMult: 1.95, trait: "Four brutal bars", hint: "A slow rival with massive hits. Sustained damage beats panic speed.", mode: "flat", bias: { speed: 0.58, damage: 2.25, growth: 0.72, gravity: 1.2, bounce: 0.78, ballCount: -1 }, enemyTrack: { barCount: 4, healthMult: 5.4, barHealthGrowth: 26, barGap: 18, barHeight: 34 }, playerTrackMultiplier: 1.08 },
+    { id: "sealed_colossus", name: "Sealed Colossus", difficulty: "Boss", levelOffset: 3, rewardMult: 2.15, trait: "One giant seal", hint: "The rival has one boss bar. Bring explosive scaling or focused start damage.", mode: "milestone", bias: { speed: 0.74, damage: 1.7, growth: 1.35, gravity: 0.92, bounce: 0.84 }, enemyTrack: { barCount: 1, healthMult: 18, barHealthGrowth: 0, barGap: 0, barHeight: 86 }, playerTrackMultiplier: 1.16, rarity: "arcane" },
+    { id: "mirror_impaler", name: "Mirror Impaler", difficulty: "Hard", levelOffset: 1, rewardMult: 1.5, trait: "Needle rush", hint: "Fast, tiny balls shred weak bars but can lose control.", mode: "critical", bias: { speed: 1.42, damage: 0.82, growth: 0.95, gravity: 0.9, bounce: 0.72, ballCount: 1 }, enemyTrackMultiplier: 0.9 }
   ];
 
   const STORY_FIGHTS = [
@@ -119,6 +122,18 @@
     };
   }
 
+  function applyTrackOverride(track, override) {
+    if (!override) return track;
+    const next = { ...track };
+    if (override.barCount != null) next.barCount = clamp(Math.round(override.barCount), 1, 500);
+    if (override.healthMult != null) next.barHealth = Math.max(1, Math.round(next.barHealth * Number(override.healthMult)));
+    if (override.barHealth != null) next.barHealth = Math.max(1, Math.round(override.barHealth));
+    if (override.barHealthGrowth != null) next.barHealthGrowth = Number(override.barHealthGrowth);
+    if (override.barGap != null) next.barGap = clamp(Number(override.barGap), 0, 500);
+    if (override.barHeight != null) next.barHeight = clamp(Number(override.barHeight), 16, 120);
+    return next;
+  }
+
   function enemyStats(level, mode, bias) {
     const safeLevel = Math.max(1, Math.floor(Number(level) || 1));
     const tuned = {
@@ -155,8 +170,8 @@
   function makeEncounter(type, source, level, options) {
     const opts = options || {};
     const encounterLevel = Math.max(1, Math.floor(Number(level) || 1));
-    const playerTrack = makeTrack(encounterLevel, type, opts.playerTrackMultiplier || source.playerTrackMultiplier || 1);
-    const enemyTrack = makeTrack(encounterLevel, type, opts.enemyTrackMultiplier || source.enemyTrackMultiplier || 1);
+    const playerTrack = applyTrackOverride(makeTrack(encounterLevel, type, opts.playerTrackMultiplier || source.playerTrackMultiplier || 1), opts.playerTrack || source.playerTrack);
+    const enemyTrack = applyTrackOverride(makeTrack(encounterLevel, type, opts.enemyTrackMultiplier || source.enemyTrackMultiplier || 1), opts.enemyTrack || source.enemyTrack);
     const rewardMult = opts.rewardMult || source.rewardMult || 1;
     return {
       id: type + "-" + source.id,
@@ -184,6 +199,43 @@
     };
   }
 
+  function maybeChampion(encounter, player) {
+    if (!encounter || encounter.type !== "skirmish") return encounter;
+    const progress = Math.max(0, player.storyProgress || 0);
+    const chance = Math.min(0.26, 0.11 + progress * 0.025 + Math.max(0, player.level - 1) * 0.006);
+    if (Math.random() >= chance) return encounter;
+
+    const titles = ["Champion", "Bloodmarked", "Umbral", "Sainted", "Ironbound"];
+    const title = titles[Math.floor(Math.random() * titles.length)];
+    const champion = {
+      ...encounter,
+      id: encounter.id + "-champion",
+      name: title + " " + encounter.name,
+      enemyName: title + " " + encounter.enemyName,
+      difficulty: "Champion",
+      trait: "Champion " + encounter.trait,
+      description: "A marked rival carrying a stronger pattern and richer spoils.",
+      champion: true,
+      rewards: {
+        xp: Math.round(encounter.rewards.xp * 1.55),
+        gold: Math.round(encounter.rewards.gold * 1.6)
+      },
+      lootChance: Math.max(encounter.lootChance || 0, 100),
+      lootGuaranteed: Math.max(encounter.lootGuaranteed || 0, 1),
+      guaranteedRarity: encounter.guaranteedRarity || (player.level >= 5 ? "arcane" : "magic"),
+      playerTrack: applyTrackOverride(encounter.playerTrack, { healthMult: 1.12 }),
+      enemyTrack: applyTrackOverride(encounter.enemyTrack, { healthMult: 1.22, barHealthGrowth: encounter.enemyTrack.barHealthGrowth + 3 }),
+      enemyStats: {
+        ...encounter.enemyStats,
+        startDamage: Math.round(encounter.enemyStats.startDamage * 1.32),
+        growthValue: Math.round(encounter.enemyStats.growthValue * 1.24),
+        speed: Math.round(encounter.enemyStats.speed * 1.08)
+      }
+    };
+    champion.requirement = "Champion encounter: harder fight, guaranteed loot.";
+    return champion;
+  }
+
   function getSkirmishes(player) {
     const progress = Math.max(0, player.storyProgress || 0);
     return SKIRMISH_TEMPLATES.map((template, index) => {
@@ -196,7 +248,8 @@
 
   function createSkirmishEncounter(templateId, player) {
     const template = SKIRMISH_TEMPLATES.find((candidate) => candidate.id === templateId) || SKIRMISH_TEMPLATES[0];
-    return getSkirmishes(player).find((encounter) => encounter.sourceId === template.id) || makeEncounter("skirmish", template, player.level);
+    const encounter = getSkirmishes(player).find((candidate) => candidate.sourceId === template.id) || makeEncounter("skirmish", template, player.level);
+    return maybeChampion(encounter, player);
   }
 
   function getStoryFights(player) {

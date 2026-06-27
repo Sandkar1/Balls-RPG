@@ -6,9 +6,10 @@
   const RARITIES = {
     common: { id: "common", name: "Common", affixes: 1, weight: 56, cost: 1, scale: 1, colorClass: "rarity-common" },
     magic: { id: "magic", name: "Magic", affixes: 2, weight: 28, cost: 1.55, scale: 1.15, colorClass: "rarity-magic" },
-    rare: { id: "rare", name: "Rare", affixes: [2, 3], weight: 11, cost: 2.35, scale: 1.45, colorClass: "rarity-rare" },
-    epic: { id: "epic", name: "Epic", affixes: 3, weight: 4, cost: 3.75, scale: 1.75, colorClass: "rarity-epic" },
-    legendary: { id: "legendary", name: "Legendary", affixes: 4, weight: 1, cost: 6.4, scale: 2.1, colorClass: "rarity-legendary" }
+    arcane: { id: "arcane", name: "Arcane", affixes: 3, weight: 9, cost: 2.35, scale: 1.32, colorClass: "rarity-arcane" },
+    rare: { id: "rare", name: "Rare", affixes: [2, 3], weight: 10, cost: 2.55, scale: 1.45, colorClass: "rarity-rare" },
+    epic: { id: "epic", name: "Epic", affixes: 4, weight: 2, cost: 5.8, scale: 1.82, colorClass: "rarity-epic" },
+    legendary: { id: "legendary", name: "Legendary", affixes: 4, weight: 0.7, cost: 7.2, scale: 2.1, colorClass: "rarity-legendary" }
   };
 
   const SLOT_NOUNS = {
@@ -35,6 +36,9 @@
     { id: "anchored", name: "Anchored", mods: { gravityPct: [18, 30], bouncePct: [-8, -3] }, weight: 7 },
     { id: "springbound", name: "Springbound", mods: { bouncePct: [5, 13] }, weight: 11 },
     { id: "steady", name: "Steady", mods: { bouncePct: [-8, -3], growthValuePct: [12, 22] }, weight: 8 },
+    { id: "deadfall", name: "Deadfall", mods: { bouncePct: [-16, -7], gravityPct: [5, 12], startDamagePct: [5, 12] }, weight: 7 },
+    { id: "gravebound", name: "Gravebound", mods: { bouncePct: [-18, -8], speedPct: [-5, -2], growthValuePct: [10, 20] }, weight: 7 },
+    { id: "measured", name: "Measured", mods: { bouncePct: [-10, -4], ballSizePct: [5, 12] }, weight: 9 },
     { id: "wide", name: "Wide", mods: { ballSizePct: [8, 18] }, weight: 8 },
     { id: "needle", name: "Needle", mods: { ballSizePct: [-14, -5], speedPct: [5, 10] }, weight: 8 },
     { id: "split", name: "Split", mods: { ballCount: [1, 1], startDamagePct: [-12, -6] }, weight: 5 },
@@ -44,7 +48,11 @@
     { id: "polished", name: "Polished", mods: { speedPct: [4, 9], bouncePct: [3, 8] }, weight: 10 },
     { id: "volatile", name: "Volatile", mods: { growthValuePct: [20, 34], gravityPct: [-10, -4] }, weight: 6 },
     { id: "dense", name: "Dense", mods: { startDamage: [9, 24], speedPct: [-12, -5] }, weight: 7 },
-    { id: "kindled", name: "Kindled", mods: { startDamage: [3, 10], growthValue: [1, 4] }, weight: 9 }
+    { id: "kindled", name: "Kindled", mods: { startDamage: [3, 10], growthValue: [1, 4] }, weight: 9 },
+    { id: "oathbound", name: "Oathbound", mods: { startDamagePct: [8, 16], growthValuePct: [8, 16], speedPct: [-6, -2] }, weight: 7 },
+    { id: "sapphire", name: "Sapphire", mods: { speedPct: [5, 11], growthValue: [2, 7], bouncePct: [-7, -3] }, weight: 6 },
+    { id: "blackened", name: "Blackened", mods: { startDamage: [8, 20], gravityPct: [6, 14], bouncePct: [-12, -5] }, weight: 6 },
+    { id: "silvered", name: "Silvered", mods: { startDamagePct: [5, 12], speedPct: [4, 9], ballSizePct: [-8, -3] }, weight: 8 }
   ];
 
   function randomInt(min, max) {
@@ -72,7 +80,7 @@
   function rollRarity(level, bonus) {
     const levelBonus = Math.max(0, Number(level || 1) - 1) * 0.45 + Number(bonus || 0);
     const weighted = Object.values(RARITIES).map((rarity) => {
-      const boost = rarity.id === "rare" ? levelBonus : rarity.id === "epic" ? levelBonus * 0.38 : rarity.id === "legendary" ? levelBonus * 0.12 : 0;
+      const boost = rarity.id === "arcane" ? levelBonus * 0.7 : rarity.id === "rare" ? levelBonus : rarity.id === "epic" ? levelBonus * 0.28 : rarity.id === "legendary" ? levelBonus * 0.08 : 0;
       const drag = rarity.id === "common" ? levelBonus * 0.9 : 0;
       return { ...rarity, weight: Math.max(1, rarity.weight + boost - drag) };
     });
@@ -119,8 +127,9 @@
     const noun = nouns[randomInt(0, nouns.length - 1)];
     const prefix = affixes[0] ? affixes[0].name : rarity.name;
     const suffix = affixes[1] ? " of " + affixes[1].name : "";
+    const epicName = rarity.id === "epic" ? "Dread " + prefix + " " + noun : null;
     const legendaryName = rarity.id === "legendary" ? "Dawn " + noun + " of " + prefix : null;
-    const name = legendaryName || prefix + " " + noun + suffix;
+    const name = legendaryName || epicName || prefix + " " + noun + suffix;
     const value = Math.round((34 + safeLevel * 22) * rarity.cost * (1 + affixes.length * 0.18));
 
     return {
@@ -160,11 +169,15 @@
 
   function restockShop(player) {
     const stock = [];
-    const count = 6;
+    const count = 7;
     for (let i = 0; i < count; i++) {
       const level = Math.max(1, player.level + randomInt(-1, 1));
-      const item = i === 0 ? generateItem(level, null, "common") : generateItem(level);
+      const specialEpic = i === count - 1 && player.level >= 3 && Math.random() < 0.22;
+      const forcedRarity = i === 0 ? "common" : specialEpic ? "epic" : null;
+      const item = generateItem(level, null, forcedRarity);
       item.shopCost = Math.max(12, Math.round(item.value * (1.05 + Math.random() * 0.35)));
+      if (item.rarity === "epic") item.shopCost = Math.round(item.shopCost * 1.75 + player.level * 38);
+      if (item.rarity === "arcane") item.shopCost = Math.round(item.shopCost * 1.18);
       if (i === 0) item.shopCost = Math.min(item.shopCost, Math.max(45, player.level * 24 + 35));
       stock.push(item);
     }

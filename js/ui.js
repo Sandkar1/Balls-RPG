@@ -117,11 +117,18 @@
     const entries = itemStatEntries(item);
     if (!entries.length) return `<div class="item-stat-row neutral"><span>No stat modifiers</span><strong>0</strong></div>`;
     return entries.map((entry) => `
-      <div class="item-stat-row ${entry.value >= 0 ? "positive" : "negative"}">
+      <div class="item-stat-row ${statTone(entry.key, entry.value)}">
         <span>${entry.name}</span>
         <strong>${entry.text}</strong>
       </div>
     `).join("");
+  }
+
+  function statTone(key, value) {
+    const amount = Number(value || 0);
+    if (amount === 0) return "neutral";
+    if (key === "bounce" || key === "bouncePct") return amount < 0 ? "positive" : "negative";
+    return amount > 0 ? "positive" : "negative";
   }
 
   function compareItemStats(candidate, equipped) {
@@ -151,7 +158,7 @@
       <div class="compare-block">
         <span>Compared to ${RPG.escapeHtml(equipped.name)}</span>
         ${rows.map((row) => `
-          <div class="compare-row ${row.delta > 0 ? "positive" : row.delta < 0 ? "negative" : "neutral"}">
+          <div class="compare-row ${statTone(row.key, row.delta)}">
             <span>${row.name}</span>
             <strong>${row.text}</strong>
           </div>
@@ -187,11 +194,11 @@
     if (!item || !equipped || equipped.id === item.id) return itemPreviewContent(item, equipped);
     return `
       <div class="alt-compare-grid">
-        ${itemCompareBlock(item, "Hovered Item")}
+        ${itemCompareBlock(item, "Selected Item")}
         ${itemCompareBlock(equipped, "Currently Equipped")}
       </div>
       ${renderCompareRows(item, equipped)}
-      <p class="alt-compare-note active">Press Left Alt again to return to compact view.</p>
+      <p class="alt-compare-note active">${dom.itemPreviewPinned ? "Tap outside to close." : "Press Left Alt again to return to compact view."}</p>
     `;
   }
 
@@ -203,7 +210,7 @@
     const entries = itemStatEntries(item);
     if (!entries.length) return `<div class="mini-stat neutral"><span>No stats</span><strong>0</strong></div>`;
     return entries.map((entry) => `
-      <div class="mini-stat ${entry.value >= 0 ? "positive" : "negative"}">
+      <div class="mini-stat ${statTone(entry.key, entry.value)}">
         <span>${entry.name}</span>
         <strong>${entry.text}</strong>
       </div>
@@ -216,7 +223,7 @@
     const rows = compareItemStats(item, current).filter((row) => row.delta !== 0);
     if (!rows.length) return `<span class="delta-pill neutral">No stat changes</span>`;
     return rows.slice(0, limit || 3).map((row) => `
-      <span class="delta-pill ${row.delta > 0 ? "positive" : "negative"}">${row.text} ${row.name}</span>
+      <span class="delta-pill ${statTone(row.key, row.delta)}">${row.text} ${row.name}</span>
     `).join("");
   }
 
@@ -251,6 +258,7 @@
     dom.itemPreviewTarget = target;
     renderItemPreviewPanel(item, equippedForItem(item));
     panel.classList.add("visible");
+    panel.classList.toggle("mobile-pinned", Boolean(dom.itemPreviewPinned));
     panel.setAttribute("aria-hidden", "false");
     positionItemPreview(event, target);
   }
@@ -301,9 +309,11 @@
     if (!dom.itemPreviewPanel) return;
     dom.itemPreviewTarget = null;
     dom.itemPreviewPointer = null;
+    dom.itemPreviewPinned = false;
     dom.altCompareOpen = false;
     dom.itemPreviewPanel.classList.remove("visible");
     dom.itemPreviewPanel.classList.remove("alt-compare");
+    dom.itemPreviewPanel.classList.remove("mobile-pinned");
     dom.itemPreviewPanel.setAttribute("aria-hidden", "true");
   }
 
@@ -337,48 +347,61 @@
 
     document.addEventListener("click", (event) => {
       const target = event.target.closest("[data-action], [data-nav]");
-      if (!target) return;
 
-      if (target.dataset.nav) {
-        showView(target.dataset.nav);
+      if (target) {
+        if (target.dataset.nav) {
+          showView(target.dataset.nav);
+          return;
+        }
+
+        const action = target.dataset.action;
+        if (action === "continue-game") continueGame();
+        else if (action === "back-to-start") renderStart();
+        else if (action === "save-game") saveWithMessage();
+        else if (action === "return-map") returnToMap();
+        else if (action === "restock-shop") restockShop();
+        else if (action === "buy-item") buyItem(target.dataset.item);
+        else if (action === "equip-item") equipItem(target.dataset.item);
+        else if (action === "unequip-slot") unequipSlot(target.dataset.slot);
+        else if (action === "sell-item") sellItem(target.dataset.item);
+        else if (action === "learn-talent") learnTalent(target.dataset.talent);
+        else if (action === "respec-talents") respecTalents();
+        else if (action === "set-pattern") setPattern(target.dataset.pattern);
+        else if (action === "start-skirmish") startSkirmish(target.dataset.encounter);
+        else if (action === "start-story") startStory(target.dataset.encounter);
+        else if (action === "start-quest") startQuest(target.dataset.quest);
+        else if (action === "retry-fight") retryFight();
+        else if (action === "clear-save") clearSave();
         return;
       }
 
-      const action = target.dataset.action;
-      if (action === "continue-game") continueGame();
-      else if (action === "back-to-start") renderStart();
-      else if (action === "save-game") saveWithMessage();
-      else if (action === "return-map") returnToMap();
-      else if (action === "restock-shop") restockShop();
-      else if (action === "buy-item") buyItem(target.dataset.item);
-      else if (action === "equip-item") equipItem(target.dataset.item);
-      else if (action === "unequip-slot") unequipSlot(target.dataset.slot);
-      else if (action === "sell-item") sellItem(target.dataset.item);
-      else if (action === "learn-talent") learnTalent(target.dataset.talent);
-      else if (action === "respec-talents") respecTalents();
-      else if (action === "set-pattern") setPattern(target.dataset.pattern);
-      else if (action === "start-skirmish") startSkirmish(target.dataset.encounter);
-      else if (action === "start-story") startStory(target.dataset.encounter);
-      else if (action === "start-quest") startQuest(target.dataset.quest);
-      else if (action === "retry-fight") retryFight();
-      else if (action === "clear-save") clearSave();
+      const previewTarget = event.target.closest("[data-item-preview]");
+      if (previewTarget && (window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 760)) {
+        event.preventDefault();
+        dom.itemPreviewPinned = true;
+        dom.altCompareOpen = true;
+        showItemPreview(previewTarget, null);
+      } else if (dom.itemPreviewPinned && dom.itemPreviewPanel && !dom.itemPreviewPanel.contains(event.target)) {
+        hideItemPreview();
+      }
     });
 
     document.addEventListener("pointerover", (event) => {
       const target = event.target.closest("[data-item-preview]");
-      if (target) showItemPreview(target, event);
+      if (target && !dom.itemPreviewPinned) showItemPreview(target, event);
     });
 
     document.addEventListener("pointermove", (event) => {
       const target = event.target.closest("[data-item-preview]");
       if (target && dom.itemPreviewPanel && dom.itemPreviewPanel.classList.contains("visible")) {
+        if (dom.itemPreviewPinned) return;
         positionItemPreview(event, target);
       }
     });
 
     document.addEventListener("pointerout", (event) => {
       const target = event.target.closest("[data-item-preview]");
-      if (target && !target.contains(event.relatedTarget)) hideItemPreview();
+      if (target && !dom.itemPreviewPinned && !target.contains(event.relatedTarget)) hideItemPreview();
     });
 
     document.addEventListener("focusin", (event) => {
@@ -388,7 +411,7 @@
 
     document.addEventListener("focusout", (event) => {
       const target = event.target.closest("[data-item-preview]");
-      if (target && !target.contains(event.relatedTarget)) hideItemPreview();
+      if (target && !dom.itemPreviewPinned && !target.contains(event.relatedTarget)) hideItemPreview();
     });
 
     document.addEventListener("keydown", (event) => {
@@ -788,7 +811,7 @@
       `;
 
     return `
-      <article class="item-card ${equipped ? "equipped" : ""} ${affordable ? "affordable" : "unaffordable"}" tabindex="0" ${itemPreviewAttrs(item)} aria-label="${RPG.escapeHtml(item.name + ". " + RPG.describeMods(item.mods))}">
+      <article class="item-card ${RPG.rarityClass(item.rarity)} ${equipped ? "equipped" : ""} ${affordable ? "affordable" : "unaffordable"}" tabindex="0" ${itemPreviewAttrs(item)} aria-label="${RPG.escapeHtml(item.name + ". " + RPG.describeMods(item.mods))}">
         ${itemIcon(item)}
         <div class="item-body">
           <div class="item-topline">
@@ -812,7 +835,7 @@
     if (!rows.length) return `<p class="meta">No stat changes.</p>`;
     return `
       <div class="inline-compare">
-        ${rows.map((row) => `<span class="${row.delta > 0 ? "positive" : "negative"}">${row.text} ${row.name}</span>`).join("")}
+        ${rows.map((row) => `<span class="${statTone(row.key, row.delta)}">${row.text} ${row.name}</span>`).join("")}
       </div>
     `;
   }

@@ -18,7 +18,8 @@
     barCount: 14,
     barHealth: 180,
     barHealthGrowth: 5,
-    barGap: 8
+    barGap: 8,
+    barHeight: FIXED_BAR_HEIGHT
   };
 
   let canvas;
@@ -45,8 +46,8 @@
     width: 0,
     height: 0,
     lanes: [
-      { id: "left", name: "Player", side: -1, accent: "#55d68d", pipe: { x: 0, y: 0, w: 0, h: 0 }, balls: [], bars: [], particles: [], floaters: [], score: 0, destroyedBars: 0, summary: {}, settings: { ...defaultSettings } },
-      { id: "right", name: "Rival", side: 1, accent: "#62a8ff", pipe: { x: 0, y: 0, w: 0, h: 0 }, balls: [], bars: [], particles: [], floaters: [], score: 0, destroyedBars: 0, summary: {}, settings: { ...defaultSettings } }
+      { id: "left", name: "Player", side: -1, accent: "#55d68d", pipe: { x: 0, y: 0, w: 0, h: 0 }, balls: [], bars: [], particles: [], floaters: [], score: 0, destroyedBars: 0, destroyedBarIndices: new Set(), summary: {}, settings: { ...defaultSettings } },
+      { id: "right", name: "Rival", side: 1, accent: "#62a8ff", pipe: { x: 0, y: 0, w: 0, h: 0 }, balls: [], bars: [], particles: [], floaters: [], score: 0, destroyedBars: 0, destroyedBarIndices: new Set(), summary: {}, settings: { ...defaultSettings } }
     ],
     currentEncounter: null,
     started: false,
@@ -93,16 +94,18 @@
     resetBtn.addEventListener("click", resetGame);
 
     canvas.addEventListener("pointerdown", (event) => {
-      if (state.gameOver || !state.currentEncounter) return;
+      if (state.gameOver || state.paused || !state.started || !state.currentEncounter) return;
       const pos = getPointerPosition(event);
       const lane = laneAtPoint(pos);
       if (!lane) return;
-      canvas.setPointerCapture(event.pointerId);
+      event.preventDefault();
+      if (canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
       state.pointer = { lane, startX: pos.x, startY: pos.y, x: pos.x, y: pos.y };
     });
 
     canvas.addEventListener("pointermove", (event) => {
       if (!state.pointer) return;
+      event.preventDefault();
       const pos = getPointerPosition(event);
       state.pointer.x = pos.x;
       state.pointer.y = pos.y;
@@ -110,9 +113,14 @@
 
     canvas.addEventListener("pointerup", (event) => {
       if (!state.pointer || state.gameOver) return;
+      event.preventDefault();
       const pos = getPointerPosition(event);
       const dx = state.pointer.startX - pos.x;
       const dy = state.pointer.startY - pos.y;
+      if (Math.hypot(dx, dy) < 12) {
+        state.pointer = null;
+        return;
+      }
       const power = Math.min(720, Math.hypot(dx, dy) * 5);
       const angle = Math.atan2(dy, dx);
       const vx = Math.cos(angle) * power;
@@ -155,6 +163,8 @@
     state.lanes[1].settings = sanitizeSettings(payload.enemyStats);
     state.lanes[0].score = 0;
     state.lanes[1].score = 0;
+    state.lanes[0].destroyedBarIndices = new Set();
+    state.lanes[1].destroyedBarIndices = new Set();
 
     fightName.textContent = payload.encounter ? payload.encounter.name : "Arena";
     fightTypeLabel.textContent = payload.encounter ? payload.encounter.type + " fight" : "Fight";
@@ -178,7 +188,8 @@
       barCount: clamp(Math.round(numberOr(input.barCount, defaultSettings.barCount)), 1, 500),
       barHealth: Math.max(1, Math.round(numberOr(input.barHealth, defaultSettings.barHealth))),
       barHealthGrowth: clamp(numberOr(input.barHealthGrowth, defaultSettings.barHealthGrowth), 0, 10000),
-      barGap: clamp(numberOr(input.barGap, defaultSettings.barGap), 0, 500)
+      barGap: clamp(numberOr(input.barGap, defaultSettings.barGap), 0, 500),
+      barHeight: clamp(numberOr(input.barHeight, defaultSettings.barHeight), 16, 120)
     };
   }
 
@@ -273,20 +284,24 @@
   function buildBarsForLane(lane, keepDamage) {
     const s = settings(lane);
     const oldBars = keepDamage ? lane.bars : [];
+    const oldByIndex = new Map(oldBars.map((bar) => [bar.index, bar]));
+    if (!keepDamage || !lane.destroyedBarIndices) lane.destroyedBarIndices = new Set();
     const pipe = lane.pipe;
     const rows = s.barCount;
     const gap = s.barGap;
-    const barH = FIXED_BAR_HEIGHT;
+    const barH = s.barHeight || FIXED_BAR_HEIGHT;
     const barAreaTop = pipe.y + pipe.h - rows * barH - Math.max(0, rows - 1) * gap - 18;
     const barW = pipe.w - 40;
     const bars = [];
 
     for (let i = 0; i < s.barCount; i++) {
-      const old = oldBars[i];
+      if (keepDamage && lane.destroyedBarIndices.has(i)) continue;
+      const old = oldByIndex.get(i);
       const growthBasisPoints = BigInt(Math.round(s.barHealthGrowth * 100));
       const maxHealth = s.barHealth + BigInt(i) * (s.barHealth * growthBasisPoints / 10000n);
       const currentHealth = old ? minBigInt(old.health, maxHealth) : maxHealth;
       bars.push({
+        index: i,
         x: pipe.x + 20,
         y: barAreaTop + i * (barH + gap),
         w: barW,
@@ -332,6 +347,7 @@
     lane.particles = [];
     lane.floaters = [];
     lane.destroyedBars = 0;
+    lane.destroyedBarIndices = new Set();
     for (let i = 0; i < s.ballCount; i++) {
       lane.balls.push(createBall(lane, i));
     }
@@ -343,6 +359,7 @@
       lane.particles = [];
       lane.floaters = [];
       lane.destroyedBars = 0;
+      lane.destroyedBarIndices = new Set();
     }
     state.started = false;
     state.paused = true;
@@ -607,6 +624,8 @@
       bar.dead = true;
       bar.health = 0n;
       lane.destroyedBars++;
+      if (!lane.destroyedBarIndices) lane.destroyedBarIndices = new Set();
+      lane.destroyedBarIndices.add(bar.index);
       burstBar(lane, bar);
       setTimeout(() => {
         bar.remove = true;
