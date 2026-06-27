@@ -170,7 +170,7 @@ h3 {
 .game-screen {
   min-height: calc(100vh - 60px);
   display: grid;
-  grid-template-columns: minmax(230px, 292px) minmax(520px, 1fr) minmax(260px, 320px);
+  grid-template-columns: minmax(230px, 292px) minmax(520px, 1fr);
   gap: clamp(14px, 1.8vw, 22px);
   align-items: start;
 }
@@ -204,6 +204,10 @@ h3 {
   top: 18px;
   max-height: calc(100vh - 36px);
   overflow: auto;
+}
+
+.character-panel {
+  display: none;
 }
 
 .center-stage {
@@ -1673,7 +1677,7 @@ button.talent-node {
 }
 
 .game-stage {
-  min-height: 860px;
+  min-height: 920px;
   display: grid;
   grid-template-rows: auto auto auto auto 1fr auto;
   gap: 8px;
@@ -1765,7 +1769,7 @@ button.talent-node {
 }
 
 .canvas-wrap {
-  min-height: 760px;
+  min-height: 820px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   background:
@@ -1784,12 +1788,12 @@ button.talent-node {
   border: 1px solid rgba(255, 200, 87, 0.16);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.028);
-  padding: 8px;
+  padding: 6px;
 }
 
 .combat-compare-head {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .combat-compare-head span {
@@ -1805,22 +1809,23 @@ button.talent-node {
 .combat-side-wrap {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
 }
 
 .combat-side {
   min-width: 0;
   display: grid;
-  gap: 5px;
+  gap: 3px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.14);
-  padding: 7px;
+  padding: 5px;
 }
 
 .combat-side > strong {
   color: var(--accent);
-  font-size: 12px;
+  font-size: 11.5px;
+  line-height: 1.1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1832,8 +1837,8 @@ button.talent-node {
 
 .combat-side-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
 }
 
 .combat-side-grid div {
@@ -1843,12 +1848,12 @@ button.talent-node {
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.025);
-  padding: 4px 5px;
+  padding: 3px 4px;
 }
 
 .combat-side-grid span {
   color: var(--muted);
-  font-size: 8.5px;
+  font-size: 8px;
   font-weight: 850;
   line-height: 1.1;
   text-transform: uppercase;
@@ -1857,7 +1862,7 @@ button.talent-node {
 .combat-side-grid b {
   min-width: 0;
   color: var(--text);
-  font-size: 12px;
+  font-size: 11.5px;
   line-height: 1.15;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2182,11 +2187,11 @@ canvas {
 
   .game-stage {
     min-height: auto;
-    grid-template-rows: auto auto auto auto minmax(560px, 68vh) auto;
+    grid-template-rows: auto auto auto auto minmax(600px, 72vh) auto;
   }
 
   .canvas-wrap {
-    min-height: 560px;
+    min-height: 600px;
   }
 
   .alt-compare-grid,
@@ -2250,11 +2255,11 @@ canvas {
   }
 
   .game-stage {
-    grid-template-rows: auto auto auto auto minmax(500px, 66vh) auto;
+    grid-template-rows: auto auto auto auto minmax(540px, 70vh) auto;
   }
 
   .canvas-wrap {
-    min-height: 500px;
+    min-height: 540px;
   }
 
   .shop-stat-list {

@@ -4,7 +4,7 @@
   const RPG = window.BounceRPG;
 
   const palette = ["#55d68d", "#62a8ff", "#ffc857", "#ff7a90", "#b891ff", "#5ee7df"];
-  const FIXED_BAR_HEIGHT = 24;
+  const FIXED_BAR_HEIGHT = 20;
 
   const defaultSettings = {
     ballCount: 3,
@@ -844,11 +844,16 @@
       roundRect(bar.x + 0.5, bar.y + 0.5, bar.w - 1, bar.h - 1, 7);
       ctx.stroke();
 
-      ctx.fillStyle = "#effaf2";
-      ctx.font = "700 12px Helvetica, Arial, sans-serif";
+      const label = compactNumber(bar.health);
+      const labelSize = Math.max(11, Math.min(13, bar.h * 0.62));
+      ctx.font = "900 " + labelSize + "px Helvetica, Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(compactNumber(bar.health), bar.x + bar.w / 2, bar.y + bar.h / 2);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(2, 5, 4, 0.82)";
+      ctx.strokeText(label, bar.x + bar.w / 2, bar.y + bar.h / 2);
+      ctx.fillStyle = "#fbfff9";
+      ctx.fillText(label, bar.x + bar.w / 2, bar.y + bar.h / 2);
       ctx.restore();
     }
   }

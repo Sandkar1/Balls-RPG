@@ -12,6 +12,8 @@
     story: "Story Fights",
     talents: "Talents",
     questgiver: "Questgiver",
+    bag: "Bag",
+    stats: "Character Stats",
     fight: "Fight"
   };
 
@@ -572,7 +574,6 @@
     dom.startScreen.classList.add("hidden");
     dom.gameScreen.classList.remove("hidden");
     renderWorldPanel();
-    renderCharacterPanel();
     renderMessage();
     renderCurrentView();
   }
@@ -597,7 +598,7 @@
     }
 
     dom.gameScreen.classList.remove("in-fight");
-    dom.characterPanel.classList.remove("hidden");
+    dom.characterPanel.classList.add("hidden");
     dom.arenaSection.classList.add("hidden");
     dom.viewHost.classList.remove("hidden");
 
@@ -606,6 +607,8 @@
     else if (view === "story") renderStory();
     else if (view === "talents") renderTalents();
     else if (view === "questgiver") renderQuestgiver();
+    else if (view === "bag") renderBagView();
+    else if (view === "stats") renderCharacterStatsView();
     else renderMap();
   }
 
@@ -617,7 +620,9 @@
       ["skirmish", "Skirmish", "Farm XP, gold, loot", "skirmish"],
       ["story", "Story Fight", "Advance the ending", "story"],
       ["talents", "Talents", "Learn or respec", "talents"],
-      ["questgiver", "Questgiver", "Special challenges", "questgiver"]
+      ["questgiver", "Questgiver", "Special challenges", "questgiver"],
+      ["bag", "Bag", "Compare and equip gear", "shop"],
+      ["stats", "Character Stats", "Build totals", "head"]
     ];
     dom.worldPanel.innerHTML = `
       <div class="panel-heading">
@@ -637,6 +642,65 @@
       </div>
       ${player.storyProgress >= RPG.STORY_FIGHTS.length ? `<p class="success-text" style="margin: 14px 0 0">Story complete. The final gate is cleared.</p>` : ""}
     `;
+  }
+
+  function renderCharacterStatsView() {
+    const player = RPG.game.player;
+    const stats = RPG.getEffectiveStats(player);
+    const xpNeed = RPG.xpToNext(player.level);
+    const xpPct = Math.max(0, Math.min(100, Math.round(player.xp / xpNeed * 100)));
+    const pattern = RPG.growthPatternByMode(player.activeGrowthMode);
+
+    dom.viewHost.innerHTML = `
+      <div class="toolbar">
+        <div>
+          <h2>${RPG.escapeHtml(player.name)}</h2>
+          <p class="meta">Level ${player.level} ${RPG.escapeHtml(pattern.name)}</p>
+        </div>
+      </div>
+      <div class="xpbar" aria-label="XP"><span style="width: ${xpPct}%"></span></div>
+      <p class="meta">${player.xp} / ${xpNeed} XP to level ${player.level + 1}</p>
+
+      <div class="summary-grid">
+        <div class="summary-chip"><span>Gold</span><strong>${player.gold}</strong></div>
+        <div class="summary-chip"><span>Talent Points</span><strong>${player.talentPoints}</strong></div>
+      </div>
+
+      <h3 class="section-title">Effective Stats</h3>
+      <div class="stat-grid">
+        <div class="stat-chip"><span>Start Damage</span><strong>${stats.startDamage}</strong></div>
+        <div class="stat-chip"><span>Growth</span><strong>${stats.growthValue}</strong></div>
+        <div class="stat-chip"><span>Speed</span><strong>${stats.speed}</strong></div>
+        <div class="stat-chip"><span>Gravity</span><strong>${stats.gravity}</strong></div>
+        <div class="stat-chip"><span>Bounce</span><strong>${stats.bounce.toFixed(2)}</strong></div>
+        <div class="stat-chip"><span>Balls</span><strong>${stats.ballCount}</strong></div>
+      </div>
+
+      <h3 class="section-title">Equipment</h3>
+      <div class="equipment-layout">
+        <div class="equipment-column">
+          ${renderEquipmentSlot(player, "head")}
+          ${renderEquipmentSlot(player, "hands")}
+          ${renderEquipmentSlot(player, "ring")}
+        </div>
+        <div class="paperdoll">
+          <div class="paperdoll-ball">
+            ${svgIcon("trinket")}
+          </div>
+          <span>Racer</span>
+        </div>
+        <div class="equipment-column">
+          ${renderEquipmentSlot(player, "chest")}
+          ${renderEquipmentSlot(player, "feet")}
+          ${renderEquipmentSlot(player, "trinket")}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderBagView() {
+    const player = RPG.game.player;
+    dom.viewHost.innerHTML = renderBagPanel(player);
   }
 
   function renderCharacterPanel() {
@@ -795,21 +859,8 @@
   }
 
   function renderMap() {
-    dom.viewHost.innerHTML = `
-      <div class="toolbar">
-        <div>
-          <h2>World Map</h2>
-          <p class="meta">Pick a destination. Your equipped gear and active growth pattern shape each fight.</p>
-        </div>
-      </div>
-      <div class="world-map">
-        ${mapNode("Shop", "Buy gear, equip items, sell old drops.", "shop", "shop")}
-        ${mapNode("Skirmish", "Repeatable fights for XP, gold, and loot.", "skirmish", "skirmish")}
-        ${mapNode("Story Fight", "Hard level-gated fights that advance the game.", "story", "story")}
-        ${mapNode("Talents", "Unlock passive bonuses and growth patterns.", "talents", "talents")}
-        ${mapNode("Questgiver", "Special fights with unusual constraints.", "questgiver", "questgiver")}
-      </div>
-    `;
+    dom.viewHost.innerHTML = "";
+    dom.viewHost.classList.add("hidden");
   }
 
   function mapNode(title, copy, view, icon) {
@@ -1326,7 +1377,6 @@
 
     RPG.game.lastRewards = { won, rewardsText, drops, levels, result };
     renderWorldPanel();
-    renderCharacterPanel();
     renderMessage();
     if (dom.arenaActions) dom.arenaActions.classList.add("hidden");
     renderFightOutcome(won, rewardsText, drops, result, levels);
