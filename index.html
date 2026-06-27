@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Balls RPG</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <main class="app-shell" id="app">
+    <section class="start-screen" id="startScreen" aria-label="Create character"></section>
+
+    <section class="game-screen hidden" id="gameScreen" aria-label="Balls RPG">
+      <aside class="panel world-panel" id="worldPanel" aria-label="World map"></aside>
+
+      <section class="center-stage" aria-live="polite">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="locationLabel">World Map</p>
+            <h1>Balls RPG</h1>
+          </div>
+          <div class="top-actions">
+            <button id="saveBtn" type="button" data-action="save-game">Save</button>
+            <button id="newRunBtn" type="button" data-action="back-to-start">Menu</button>
+          </div>
+        </header>
+
+        <div class="notice" id="messageBar"></div>
+        <section class="view-host" id="viewHost"></section>
+
+        <section class="arena-section hidden" id="arenaSection" aria-label="Fight arena">
+          <div class="arena-header">
+            <div>
+              <p class="eyebrow" id="fightTypeLabel">Fight</p>
+              <h2 id="fightName">Arena</h2>
+            </div>
+            <button type="button" data-action="return-map">Return to Map</button>
+          </div>
+
+          <div class="arena-grid">
+            <aside class="panel lane-panel" id="leftPanel" aria-label="Player lane"></aside>
+
+            <section class="game-stage" aria-label="Race">
+              <div class="match-topline">
+                <div class="stats" aria-live="polite">
+                  <div class="stat time-stat"><span>Time</span><strong id="statTime">0.0s</strong></div>
+                  <div class="stat"><span>Damage</span><strong id="statDamage">0</strong></div>
+                  <div class="stat"><span>Bars</span><strong id="statBars">0</strong></div>
+                  <div class="stat"><span>Bounces</span><strong id="statBounces">0</strong></div>
+                </div>
+                <div class="match-status" id="matchStatus">Choose a fight from the map.</div>
+              </div>
+
+              <div class="arena-actions">
+                <button class="primary" id="startBtn" type="button">Start</button>
+                <button id="resetBtn" type="button">Reset</button>
+              </div>
+
+              <div class="canvas-wrap" id="canvasWrap">
+                <canvas id="gameCanvas"></canvas>
+              </div>
+
+              <div class="hintbar">
+                <span>Drag inside either lane to launch an extra ball for that side.</span>
+                <span>Space pauses. R resets.</span>
+              </div>
+
+              <div class="fight-outcome hidden" id="fightOutcome"></div>
+            </section>
+
+            <aside class="panel lane-panel" id="rightPanel" aria-label="Enemy lane"></aside>
+          </div>
+        </section>
+      </section>
+
+      <aside class="panel character-panel" id="characterPanel" aria-label="Character"></aside>
+    </section>
+  </main>
+
+  <script src="js/state.js" defer></script>
+  <script src="js/loot.js" defer></script>
+  <script src="js/talents.js" defer></script>
+  <script src="js/encounters.js" defer></script>
+  <script src="js/quests.js" defer></script>
+  <script src="js/save.js" defer></script>
+  <script src="js/combat.js" defer></script>
+  <script src="js/ui.js" defer></script>
+  <script src="js/main.js" defer></script>
+</body>
+</html>
