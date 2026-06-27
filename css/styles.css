@@ -1102,12 +1102,19 @@ h3 {
 
 .item-preview-panel.mobile-pinned {
   position: fixed;
-  inset: auto 8px 8px 8px;
+  inset: 8px 8px auto 8px;
   width: auto;
-  max-height: min(62vh, 440px);
-  padding: 10px;
+  height: min(300px, calc(100vh - 16px));
+  max-height: min(300px, calc(100vh - 16px));
+  gap: 6px;
+  overflow: auto;
+  padding: 8px;
   pointer-events: auto;
   transform: translateY(0);
+}
+
+.item-preview-panel.mobile-pinned.alt-compare {
+  width: auto;
 }
 
 .item-preview-panel strong,
@@ -1185,6 +1192,21 @@ h3 {
 
 .item-stat-table.compact {
   align-content: start;
+  gap: 2px;
+  max-height: 96px;
+  overflow: hidden;
+}
+
+.item-stat-table.compact .item-stat-row {
+  padding: 2px 5px;
+}
+
+.item-stat-table.compact .item-stat-row span {
+  font-size: 9.5px;
+}
+
+.item-stat-table.compact .item-stat-row strong {
+  font-size: 10.5px;
 }
 
 .item-stat-row,
@@ -1238,8 +1260,16 @@ h3 {
 .mobile-compare-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: start;
+  gap: 6px;
+  align-items: center;
+}
+
+.mobile-compare-head strong {
+  font-size: 13px;
+}
+
+.mobile-compare-head span {
+  font-size: 9.5px;
 }
 
 .preview-close {
@@ -1257,7 +1287,44 @@ h3 {
 .mobile-compare-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
+  gap: 6px;
+}
+
+.mobile-compare-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  align-content: start;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.13);
+  padding: 6px;
+}
+
+.mobile-compare-grid strong {
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-pinned .compare-block {
+  margin-top: 0;
+  padding-top: 5px;
+  gap: 2px;
+}
+
+.mobile-pinned .compare-row {
+  padding: 2px 5px;
+}
+
+.mobile-pinned .compare-block > span,
+.mobile-pinned .compare-row span {
+  font-size: 9.5px;
+}
+
+.mobile-pinned .compare-row strong {
+  font-size: 10.5px;
 }
 
 .full-stat,
@@ -1613,7 +1680,7 @@ button.talent-node {
 }
 
 .match-topline {
-  min-height: 64px;
+  min-height: 24px;
   display: grid;
   align-content: center;
   justify-items: center;
@@ -1670,6 +1737,33 @@ button.talent-node {
   font-size: 12px;
 }
 
+.action-timer {
+  min-width: 76px;
+  min-height: 30px;
+  display: grid;
+  align-content: center;
+  border: 1px solid rgba(255, 200, 87, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 200, 87, 0.07);
+  padding: 3px 8px;
+  text-align: center;
+}
+
+.action-timer span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 850;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.action-timer strong {
+  color: var(--gold);
+  font-size: 13px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
 .canvas-wrap {
   min-height: 760px;
   border: 1px solid var(--line-soft);
@@ -1694,13 +1788,10 @@ button.talent-node {
 }
 
 .combat-compare-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
+  display: block;
   margin-bottom: 6px;
 }
 
-.combat-compare-head strong,
 .combat-compare-head span {
   min-width: 0;
   overflow: hidden;
@@ -1708,49 +1799,69 @@ button.talent-node {
   white-space: nowrap;
   font-size: 12px;
   font-weight: 880;
-}
-
-.combat-compare-head span {
   color: var(--accent-2);
-  text-align: right;
 }
 
-.combat-stat-grid {
+.combat-side-wrap {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
 }
 
-.combat-stat-row {
+.combat-side {
+  min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 5px;
-  align-items: center;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.14);
-  padding: 4px 6px;
+  padding: 7px;
 }
 
-.combat-stat-row span {
+.combat-side > strong {
+  color: var(--accent);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combat-side.enemy > strong {
+  color: var(--accent-2);
+}
+
+.combat-side-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.combat-side-grid div {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 4px 5px;
+}
+
+.combat-side-grid span {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 850;
+  line-height: 1.1;
   text-transform: uppercase;
 }
 
-.combat-stat-row strong {
+.combat-side-grid b {
   min-width: 0;
   color: var(--text);
-  font-size: 11px;
-  text-align: right;
+  font-size: 12px;
+  line-height: 1.15;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.combat-stat-row strong:last-child {
-  color: var(--accent-2);
-  text-align: left;
+  font-variant-numeric: tabular-nums;
 }
 
 canvas {
@@ -2091,8 +2202,8 @@ canvas {
     display: none;
   }
 
-  .combat-stat-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .combat-side-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .hintbar {
@@ -2146,9 +2257,16 @@ canvas {
     min-height: 500px;
   }
 
-  .combat-stat-grid,
   .shop-stat-list {
     grid-template-columns: 1fr;
+  }
+
+  .combat-side-wrap {
+    grid-template-columns: 1fr;
+  }
+
+  .combat-side-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .mobile-compare-head {

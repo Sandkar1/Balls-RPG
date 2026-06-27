@@ -27,10 +27,8 @@
   let wrap;
   let leftPanel;
   let rightPanel;
-  let statTime;
-  let statDamage;
-  let statBars;
-  let statBounces;
+  let actionTimer;
+  let combatCompare;
   let matchStatus;
   let startBtn;
   let resetBtn;
@@ -46,8 +44,8 @@
     width: 0,
     height: 0,
     lanes: [
-      { id: "left", name: "Player", side: -1, accent: "#55d68d", pipe: { x: 0, y: 0, w: 0, h: 0 }, balls: [], bars: [], particles: [], floaters: [], score: 0, destroyedBars: 0, destroyedBarIndices: new Set(), summary: {}, settings: { ...defaultSettings } },
-      { id: "right", name: "Rival", side: 1, accent: "#62a8ff", pipe: { x: 0, y: 0, w: 0, h: 0 }, balls: [], bars: [], particles: [], floaters: [], score: 0, destroyedBars: 0, destroyedBarIndices: new Set(), summary: {}, settings: { ...defaultSettings } }
+      { id: "left", name: "Player", side: -1, accent: "#55d68d", pipe: { x: 0, y: 0, w: 0, h: 0 }, balls: [], bars: [], particles: [], floaters: [], score: 0, destroyedBars: 0, destroyedBarIndices: new Set(), bounces: 0, summary: {}, settings: { ...defaultSettings } },
+      { id: "right", name: "Rival", side: 1, accent: "#62a8ff", pipe: { x: 0, y: 0, w: 0, h: 0 }, balls: [], bars: [], particles: [], floaters: [], score: 0, destroyedBars: 0, destroyedBarIndices: new Set(), bounces: 0, summary: {}, settings: { ...defaultSettings } }
     ],
     currentEncounter: null,
     started: false,
@@ -72,10 +70,8 @@
     wrap = document.querySelector("#canvasWrap");
     leftPanel = document.querySelector("#leftPanel");
     rightPanel = document.querySelector("#rightPanel");
-    statTime = document.querySelector("#statTime");
-    statDamage = document.querySelector("#statDamage");
-    statBars = document.querySelector("#statBars");
-    statBounces = document.querySelector("#statBounces");
+    actionTimer = document.querySelector("#actionTimer");
+    combatCompare = document.querySelector("#combatCompare");
     matchStatus = document.querySelector("#matchStatus");
     startBtn = document.querySelector("#startBtn");
     resetBtn = document.querySelector("#resetBtn");
@@ -352,6 +348,7 @@
     lane.floaters = [];
     lane.destroyedBars = 0;
     lane.destroyedBarIndices = new Set();
+    lane.bounces = 0;
     for (let i = 0; i < s.ballCount; i++) {
       lane.balls.push(createBall(lane, i));
     }
@@ -364,6 +361,7 @@
       lane.floaters = [];
       lane.destroyedBars = 0;
       lane.destroyedBarIndices = new Set();
+      lane.bounces = 0;
     }
     state.started = false;
     state.paused = true;
@@ -430,6 +428,7 @@
       ball.damage += maxBigInt(1n, s.growthValue) * (behind ? 3n : 1n);
     }
     ball.r = ballRadiusForDamage(s.ballSize, ball.damage);
+    lane.bounces++;
     state.bounces++;
   }
 
@@ -941,12 +940,8 @@
   }
 
   function updateStats() {
-    const activeBars = state.lanes.reduce((sum, lane) => sum + laneBarsLeft(lane), 0);
-    const topDamage = state.lanes.reduce((laneMax, lane) => maxBigInt(laneMax, laneTopDamage(lane)), 0n);
-    statTime.textContent = formatTime(state.gameOver ? state.winTime : state.elapsed);
-    statDamage.textContent = compactNumber(topDamage);
-    statBars.textContent = activeBars;
-    statBounces.textContent = compactNumber(state.bounces);
+    const displayTime = formatTime(state.gameOver ? state.winTime : state.elapsed);
+    if (actionTimer) actionTimer.textContent = displayTime;
     for (const lane of state.lanes) {
       if (!lane.summary.progress) continue;
       lane.summary.progress.textContent = Math.round(laneProgress(lane) * 100) + "%";
@@ -954,8 +949,9 @@
       lane.summary.bars.textContent = laneBarsLeft(lane);
       lane.summary.score.textContent = lane.score;
     }
+    updateCombatCompare();
     if (state.gameOver && state.winner) {
-      matchStatus.textContent = state.winner.name + " wins in " + formatTime(state.winTime) + ".";
+      matchStatus.textContent = state.winner.name + " wins in " + displayTime + ".";
     } else if (state.started && !state.paused) {
       const leader = laneProgress(state.lanes[0]) === laneProgress(state.lanes[1])
         ? "Neck and neck"
@@ -964,6 +960,21 @@
     } else if (state.started && state.paused) {
       matchStatus.textContent = "Paused.";
     }
+  }
+
+  function updateCombatCompare() {
+    if (!combatCompare) return;
+    for (const lane of state.lanes) {
+      setCombatText(lane.id, "current", compactNumber(laneTopDamage(lane)));
+      setCombatText(lane.id, "bounces", compactNumber(lane.bounces || 0));
+      setCombatText(lane.id, "bars", laneBarsLeft(lane) + "/" + settings(lane).barCount);
+      setCombatText(lane.id, "progress", Math.round(laneProgress(lane) * 100) + "%");
+    }
+  }
+
+  function setCombatText(laneId, key, value) {
+    const node = combatCompare.querySelector(`[data-combat="${laneId}-${key}"]`);
+    if (node) node.textContent = value;
   }
 
   function formatTime(seconds) {

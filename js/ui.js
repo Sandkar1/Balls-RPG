@@ -226,6 +226,7 @@
       <div class="mobile-compare-grid">
         <div>
           <span class="compare-title">Selected</span>
+          <strong class="${RPG.rarityClass(item.rarity)}">${RPG.escapeHtml(item.name)}</strong>
           <div class="item-stat-table compact">${formatItemStatRows(item)}</div>
         </div>
         <div>
@@ -433,6 +434,14 @@
         dom.altCompareOpen = true;
         showItemPreview(previewTarget, null);
       }
+    });
+
+    document.addEventListener("pointerup", (event) => {
+      if (!dom.itemPreviewPinned || !dom.itemPreviewPanel) return;
+      const previewTarget = event.target.closest("[data-item-preview]");
+      if (previewTarget === dom.itemPreviewTarget) return;
+      if (dom.itemPreviewPanel.contains(event.target)) return;
+      hideItemPreview();
     });
 
     document.addEventListener("pointerover", (event) => {
@@ -1207,6 +1216,7 @@
     const enemyStats = arenaStatsForEnemy(active);
     dom.fightOutcome.classList.add("hidden");
     dom.fightOutcome.innerHTML = "";
+    if (dom.arenaActions) dom.arenaActions.classList.remove("hidden");
     renderCombatCompare(active, playerStats, enemyStats);
     RPG.Combat.loadEncounter({
       encounter: active,
@@ -1223,27 +1233,26 @@
 
   function renderCombatCompare(encounter, playerStats, enemyStats) {
     if (!dom.combatCompare) return;
-    const rows = [
-      ["Start", playerStats.startDamage, enemyStats.startDamage],
-      ["Growth", playerStats.growthValue, enemyStats.growthValue],
-      ["Speed", playerStats.speed, enemyStats.speed],
-      ["Gravity", playerStats.gravity, enemyStats.gravity],
-      ["Bounce", Number(playerStats.bounce).toFixed(2), Number(enemyStats.bounce).toFixed(2)],
-      ["Bars", playerStats.barCount, enemyStats.barCount]
-    ];
+    const side = (id, name, stats) => `
+      <div class="combat-side ${id === "right" ? "enemy" : ""}">
+        <strong>${RPG.escapeHtml(name)}</strong>
+        <div class="combat-side-grid">
+          <div><span>Initial Damage</span><b>${RPG.escapeHtml(String(stats.startDamage))}</b></div>
+          <div><span>Current Damage</span><b data-combat="${id}-current">${RPG.escapeHtml(String(stats.startDamage))}</b></div>
+          <div><span>Bounces</span><b data-combat="${id}-bounces">0</b></div>
+          <div><span>Bars</span><b data-combat="${id}-bars">${stats.barCount}/${stats.barCount}</b></div>
+          <div><span>Progress</span><b data-combat="${id}-progress">0%</b></div>
+          <div><span>Growth</span><b>${RPG.escapeHtml(String(stats.growthValue))}</b></div>
+        </div>
+      </div>
+    `;
     dom.combatCompare.innerHTML = `
       <div class="combat-compare-head">
-        <strong>${RPG.escapeHtml(RPG.game.player.name)}</strong>
         <span>${RPG.escapeHtml(encounter.name)}</span>
       </div>
-      <div class="combat-stat-grid">
-        ${rows.map(([label, left, right]) => `
-          <div class="combat-stat-row">
-            <strong>${RPG.escapeHtml(String(left))}</strong>
-            <span>${label}</span>
-            <strong>${RPG.escapeHtml(String(right))}</strong>
-          </div>
-        `).join("")}
+      <div class="combat-side-wrap">
+        ${side("left", RPG.game.player.name, playerStats)}
+        ${side("right", encounter.enemyName, enemyStats)}
       </div>
     `;
   }
@@ -1319,6 +1328,7 @@
     renderWorldPanel();
     renderCharacterPanel();
     renderMessage();
+    if (dom.arenaActions) dom.arenaActions.classList.add("hidden");
     renderFightOutcome(won, rewardsText, drops, result, levels);
   }
 
