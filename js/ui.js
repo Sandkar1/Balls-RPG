@@ -124,6 +124,17 @@
     `).join("");
   }
 
+  function formatFullStatList(item) {
+    const entries = itemStatEntries(item);
+    if (!entries.length) return `<div class="full-stat neutral"><span>No stats</span><strong>0</strong></div>`;
+    return entries.map((entry) => `
+      <div class="full-stat ${statTone(entry.key, entry.value)}">
+        <span>${entry.name}</span>
+        <strong>${entry.text}</strong>
+      </div>
+    `).join("");
+  }
+
   function statTone(key, value) {
     const amount = Number(value || 0);
     if (amount === 0) return "neutral";
@@ -202,6 +213,33 @@
     `;
   }
 
+  function mobileCompareContent(item, equipped) {
+    if (!item) return "";
+    return `
+      <div class="mobile-compare-head">
+        <div>
+          <strong class="${RPG.rarityClass(item.rarity)}">${RPG.escapeHtml(item.name)}</strong>
+          <span>${RPG.rarityName(item.rarity)} ${RPG.SLOT_LABELS[item.slot]} - Level ${item.level}</span>
+        </div>
+        <button class="preview-close" type="button" data-action="close-preview">Hide</button>
+      </div>
+      <div class="mobile-compare-grid">
+        <div>
+          <span class="compare-title">Selected</span>
+          <div class="item-stat-table compact">${formatItemStatRows(item)}</div>
+        </div>
+        <div>
+          <span class="compare-title">Equipped</span>
+          ${equipped ? `
+            <strong class="${RPG.rarityClass(equipped.rarity)}">${RPG.escapeHtml(equipped.name)}</strong>
+            <div class="item-stat-table compact">${formatItemStatRows(equipped)}</div>
+          ` : `<p class="tooltip-compare">Empty ${RPG.SLOT_LABELS[item.slot]} slot.</p>`}
+        </div>
+      </div>
+      ${renderCompareRows(item, equipped)}
+    `;
+  }
+
   function itemPreviewAttrs(item) {
     return `data-item-preview="true" data-item-id="${RPG.escapeHtml(item.id)}"`;
   }
@@ -266,9 +304,15 @@
   function renderItemPreviewPanel(item, equipped) {
     const panel = ensureItemPreviewPanel();
     panel.classList.toggle("alt-compare", Boolean(dom.altCompareOpen && equipped && equipped.id !== item.id));
-    panel.innerHTML = dom.altCompareOpen && equipped && equipped.id !== item.id
+    panel.innerHTML = dom.itemPreviewPinned
+      ? mobileCompareContent(item, equipped)
+      : dom.altCompareOpen && equipped && equipped.id !== item.id
       ? altCompareContent(item, equipped)
       : itemPreviewContent(item, equipped);
+  }
+
+  function isTouchCompareMode() {
+    return window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 760;
   }
 
   function refreshItemPreview() {
@@ -327,6 +371,8 @@
     dom.messageBar = document.querySelector("#messageBar");
     dom.locationLabel = document.querySelector("#locationLabel");
     dom.fightOutcome = document.querySelector("#fightOutcome");
+    dom.combatCompare = document.querySelector("#combatCompare");
+    dom.arenaActions = document.querySelector(".arena-actions");
 
     RPG.Combat.init({ onFinish: handleFightFinish });
 
@@ -372,17 +418,20 @@
         else if (action === "start-quest") startQuest(target.dataset.quest);
         else if (action === "retry-fight") retryFight();
         else if (action === "clear-save") clearSave();
+        else if (action === "close-preview") hideItemPreview();
         return;
       }
 
       const previewTarget = event.target.closest("[data-item-preview]");
-      if (previewTarget && (window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 760)) {
+      if (previewTarget && isTouchCompareMode()) {
         event.preventDefault();
+        if (dom.itemPreviewPinned && dom.itemPreviewTarget === previewTarget) {
+          hideItemPreview();
+          return;
+        }
         dom.itemPreviewPinned = true;
         dom.altCompareOpen = true;
         showItemPreview(previewTarget, null);
-      } else if (dom.itemPreviewPinned && dom.itemPreviewPanel && !dom.itemPreviewPanel.contains(event.target)) {
-        hideItemPreview();
       }
     });
 
@@ -531,11 +580,15 @@
     dom.locationLabel.textContent = VIEW_LABELS[view] || "World Map";
 
     if (view === "fight") {
+      dom.gameScreen.classList.add("in-fight");
+      dom.characterPanel.classList.add("hidden");
       dom.viewHost.classList.add("hidden");
       dom.arenaSection.classList.remove("hidden");
       return;
     }
 
+    dom.gameScreen.classList.remove("in-fight");
+    dom.characterPanel.classList.remove("hidden");
     dom.arenaSection.classList.add("hidden");
     dom.viewHost.classList.remove("hidden");
 
@@ -821,6 +874,7 @@
           </div>
           <h3 class="${RPG.rarityClass(item.rarity)}">${RPG.escapeHtml(item.name)}</h3>
           <p class="item-mods">${RPG.escapeHtml(formatPrimaryItemStats(item))}</p>
+          ${context === "shop" ? `<div class="shop-stat-list">${formatFullStatList(item)}</div>` : ""}
           ${renderInlineCompare(item, current)}
         </div>
         <div class="card-actions">${actions}</div>
@@ -1153,6 +1207,7 @@
     const enemyStats = arenaStatsForEnemy(active);
     dom.fightOutcome.classList.add("hidden");
     dom.fightOutcome.innerHTML = "";
+    renderCombatCompare(active, playerStats, enemyStats);
     RPG.Combat.loadEncounter({
       encounter: active,
       playerName: RPG.game.player.name,
@@ -1160,7 +1215,37 @@
       playerStats,
       enemyStats
     });
-    window.setTimeout(() => RPG.Combat.resize(), 0);
+    window.setTimeout(() => {
+      RPG.Combat.resize();
+      if (dom.arenaActions) dom.arenaActions.scrollIntoView({ block: "start" });
+    }, 0);
+  }
+
+  function renderCombatCompare(encounter, playerStats, enemyStats) {
+    if (!dom.combatCompare) return;
+    const rows = [
+      ["Start", playerStats.startDamage, enemyStats.startDamage],
+      ["Growth", playerStats.growthValue, enemyStats.growthValue],
+      ["Speed", playerStats.speed, enemyStats.speed],
+      ["Gravity", playerStats.gravity, enemyStats.gravity],
+      ["Bounce", Number(playerStats.bounce).toFixed(2), Number(enemyStats.bounce).toFixed(2)],
+      ["Bars", playerStats.barCount, enemyStats.barCount]
+    ];
+    dom.combatCompare.innerHTML = `
+      <div class="combat-compare-head">
+        <strong>${RPG.escapeHtml(RPG.game.player.name)}</strong>
+        <span>${RPG.escapeHtml(encounter.name)}</span>
+      </div>
+      <div class="combat-stat-grid">
+        ${rows.map(([label, left, right]) => `
+          <div class="combat-stat-row">
+            <strong>${RPG.escapeHtml(String(left))}</strong>
+            <span>${label}</span>
+            <strong>${RPG.escapeHtml(String(right))}</strong>
+          </div>
+        `).join("")}
+      </div>
+    `;
   }
 
   function arenaStatsForPlayer(encounter) {
@@ -1188,6 +1273,7 @@
     RPG.game.activeEncounter = null;
     RPG.game.lastRewards = null;
     RPG.game.currentView = "map";
+    if (dom.combatCompare) dom.combatCompare.innerHTML = "";
     renderGame();
   }
 

@@ -98,6 +98,7 @@
       const pos = getPointerPosition(event);
       const lane = laneAtPoint(pos);
       if (!lane) return;
+      if (pointInActiveBar(lane, pos)) return;
       event.preventDefault();
       if (canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
       state.pointer = { lane, startX: pos.x, startY: pos.y, x: pos.x, y: pos.y };
@@ -327,9 +328,12 @@
     const vy = customVy ?? Math.sin(angle) * s.speed * 0.75;
     const slot = index % 5;
     const mirroredX = lane.side < 0 ? 0.72 - slot * 0.11 : 0.28 + slot * 0.11;
+    const firstBarY = lane.bars.length ? Math.min(...lane.bars.map((bar) => bar.y)) : pipe.y + pipe.h;
+    const defaultY = pipe.y + 76 + Math.floor(index / 5) * 14;
+    const safeY = Math.max(pipe.y + radius + 28, Math.min(defaultY, firstBarY - radius - 30));
     return {
       x: x ?? pipe.x + pipe.w * mirroredX,
-      y: y ?? pipe.y + 70 + Math.floor(index / 5) * 14,
+      y: y ?? safeY,
       vx,
       vy,
       r: radius,
@@ -711,9 +715,7 @@
     if (state.pointer) drawLaunchGuide();
     ctx.restore();
 
-    if (state.gameOver) {
-      drawWinOverlay();
-    } else if (state.paused && state.started) {
+    if (!state.gameOver && state.paused && state.started) {
       drawPauseOverlay();
     }
   }
@@ -802,13 +804,12 @@
   function drawLaneLabel(lane) {
     const p = lane.pipe;
     ctx.fillStyle = lane.accent;
-    ctx.font = "900 13px Helvetica, Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    ctx.fillText(lane.name.toUpperCase(), p.x + p.w / 2, p.y + 10);
+    fitText(lane.name.toUpperCase(), p.x + p.w / 2, p.y + 10, p.w - 28, 13);
     ctx.fillStyle = "#edf4ee";
     ctx.font = "800 11px Helvetica, Arial, sans-serif";
-    ctx.fillText(Math.round(laneProgress(lane) * 100) + "% cleared", p.x + p.w / 2, p.y + 28);
+    fitText(Math.round(laneProgress(lane) * 100) + "% CLEARED", p.x + p.w / 2, p.y + 28, p.w - 28, 11);
   }
 
   function drawBars(lane) {
@@ -939,38 +940,6 @@
     ctx.fillText("Paused", state.width / 2, state.height / 2);
   }
 
-  function drawWinOverlay() {
-    ctx.fillStyle = "rgba(4, 8, 7, 0.68)";
-    ctx.fillRect(0, 0, state.width, state.height);
-
-    const panelW = Math.min(420, state.width - 36);
-    const panelH = 190;
-    const x = (state.width - panelW) / 2;
-    const y = (state.height - panelH) / 2;
-    ctx.fillStyle = "rgba(26, 36, 32, 0.94)";
-    roundRect(x, y, panelW, panelH, 8);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(85, 214, 141, 0.6)";
-    ctx.lineWidth = 2;
-    roundRect(x + 1, y + 1, panelW - 2, panelH - 2, 8);
-    ctx.stroke();
-
-    ctx.fillStyle = "#55d68d";
-    ctx.font = "900 38px Helvetica, Arial, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    const winnerName = state.winner ? state.winner.name : "A lane";
-    fitText(winnerName + " won!", state.width / 2, y + 58, panelW - 34, 38);
-
-    ctx.fillStyle = "#edf4ee";
-    ctx.font = "800 24px Helvetica, Arial, sans-serif";
-    ctx.fillText("Time: " + formatTime(state.winTime), state.width / 2, y + 108);
-
-    ctx.fillStyle = "#a8b7af";
-    ctx.font = "600 14px Helvetica, Arial, sans-serif";
-    ctx.fillText("Use the result panel below", state.width / 2, y + 148);
-  }
-
   function updateStats() {
     const activeBars = state.lanes.reduce((sum, lane) => sum + laneBarsLeft(lane), 0);
     const topDamage = state.lanes.reduce((laneMax, lane) => maxBigInt(laneMax, laneTopDamage(lane)), 0n);
@@ -1081,6 +1050,13 @@
       const p = lane.pipe;
       return point.x > p.x && point.x < p.x + p.w && point.y > p.y && point.y < p.y + p.h;
     }) || null;
+  }
+
+  function pointInActiveBar(lane, point) {
+    return lane.bars.some((bar) => {
+      if (bar.dead || bar.remove) return false;
+      return point.x >= bar.x && point.x <= bar.x + bar.w && point.y >= bar.y && point.y <= bar.y + bar.h;
+    });
   }
 
   function startCompetition() {
